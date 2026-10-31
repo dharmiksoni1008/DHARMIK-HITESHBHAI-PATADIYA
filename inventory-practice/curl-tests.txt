@@ -1,0 +1,878 @@
+PowerShell cURL test guide — expected outcomes, not an execution transcript
+==========================================================================
+Run from inventory-practice in Windows PowerShell. Use curl.exe (not the old
+PowerShell curl alias). JSON is sent with --data-binary from UTF-8 files, avoiding
+PowerShell/native argument quoting differences. Do not add -f: 4xx/5xx are expected.
+-i prints response status/headers. All normal requests use 3000; direct requests
+below are intentional access-control probes. Do not disclose keys in screenshots.
+
+PREPARATION (do not run against valuable inventory):
+1. Stop all three servers using Ctrl+C in their own terminals. Keep your .env safe.
+2. Run: node tests/reset-data.js
+   This resets ONLY .scratch/manual/products.json and stock.json to [] after asking
+   you to stop services in this guide. It never modifies data/*.json.
+3. In EACH of the three server terminals set:
+   $env:DATA_DIR = '.scratch/manual'
+   Then run npm run products, npm run stock, npm run gateway respectively.
+   Commands must run from the project directory, with your configured .env.
+4. In this FOURTH cURL terminal, enter the SAME admin key you configured in .env:
+   $admin = [System.Net.NetworkCredential]::new('', (Read-Host 'Admin key' -AsSecureString)).Password
+   $base = 'http://127.0.0.1:3000'
+   This variable is local to this terminal; it is not written into the guide.
+   Command arguments can be visible to other users of this computer; local demo only.
+5. Run P, N, then E tests in order. Do not run tests concurrently. If interrupted,
+   stop servers, reset, restart, and begin again. Tests using damaged storage,
+   stopped servers or the slow fixture have explicit restoration steps.
+
+POSITIVE TESTS
+
+P01 — Empty collection /products
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products"
+Expected: 200; [].
+Cleanup: None; continue in order.
+
+P02 — Empty collection /stock
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock"
+Expected: 200; [].
+Cleanup: None; continue in order.
+
+P03 — Create products
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/product.json"
+Expected: 201; id 1 and supplied fields; Location header /products/1.
+Cleanup: None; continue in order.
+
+P04 — List products
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products"
+Expected: 200; array containing record 1.
+Cleanup: None; continue in order.
+
+P05 — Read one products
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/1"
+Expected: 200; record 1.
+Cleanup: None; continue in order.
+
+P06 — Update products
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/products/1" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/product-zero.json"
+Expected: 200; id 1, name Free notebook, price 0.
+Cleanup: None; continue in order.
+
+P07 — Create stock
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock.json"
+Expected: 201; id 1 and supplied fields; Location header /stock/1.
+Cleanup: None; continue in order.
+
+P08 — List stock
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock"
+Expected: 200; array containing record 1.
+Cleanup: None; continue in order.
+
+P09 — Read one stock
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/1"
+Expected: 200; record 1.
+Cleanup: None; continue in order.
+
+P10 — Update stock
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/stock/1" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-zero.json"
+Expected: 200; id 1, productId 1, quantity 0.
+Cleanup: None; continue in order.
+
+P11 — Persistence across both service restarts
+Preconditions: After previous tests, Ctrl+C products and stock only, then npm run products and npm run stock again with DATA_DIR still .scratch/manual.
+Command:
+curl.exe -sS -i -X GET "$base/products/1"
+curl.exe -sS -i -X GET "$base/stock/1"
+Expected: Both 200; changed values survive restart.
+Cleanup: None; continue in order.
+
+NEGATIVE TESTS
+
+N01 — products missing-name
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-missing-name.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N02 — products missing-price
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-missing-price.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N03 — products empty-name
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-empty-name.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N04 — products whitespace-name
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-whitespace-name.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N05 — products number-name
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-number-name.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N06 — products null-name
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-null-name.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N07 — products string-price
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-string-price.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N08 — products negative-price
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-negative-price.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N09 — products null-price
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-null-price.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N10 — products boolean-price
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/products-boolean-price.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N11 — PUT requires both fields: products
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/products/1" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/empty-object.json"
+Expected: 400; JSON error; record unchanged.
+Cleanup: None; continue in order.
+
+N12 — products malformed body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/malformed.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N13 — products array body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/array.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N14 — products null body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/null.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N15 — products empty body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/empty.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N16 — products unsupported media type
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: text/plain" --data-binary "@tests/payloads/product.json"
+Expected: 415; JSON error.
+Cleanup: None; continue in order.
+
+N17 — products missing media type
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type:" --data-binary "@tests/payloads/empty-object.json"
+Expected: 415; JSON error.
+Cleanup: None; continue in order.
+
+N18 — products invalid ID 0
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/0"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N19 — products invalid ID -1
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/-1"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N20 — products invalid ID abc
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/abc"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N21 — products invalid ID 1.5
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/1.5"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N22 — products invalid ID 9007199254740992
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/9007199254740992"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N23 — products nonexistent ID GET
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/999"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+N24 — products nonexistent ID PUT
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/products/999" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/product.json"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+N25 — products nonexistent ID DELETE
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/products/999" -H "Authorization: Bearer $admin"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+N26 — products unsupported method
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/products" -H "Authorization: Bearer $admin"
+Expected: 405; JSON error and Allow header.
+Cleanup: None; continue in order.
+
+N27 — products unsupported method
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products/1" -H "Authorization: Bearer $admin"
+Expected: 405; JSON error and Allow header.
+Cleanup: None; continue in order.
+
+N28 — products unsupported method
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PATCH "$base/products/1" -H "Authorization: Bearer $admin"
+Expected: 405; JSON error and Allow header.
+Cleanup: None; continue in order.
+
+N29 — products POST absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N30 — products POST absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer wrong"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N31 — products PUT absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/products/1"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N32 — products PUT absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/products/1" -H "Authorization: Bearer wrong"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N33 — products DELETE absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/products/1"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N34 — products DELETE absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/products/1" -H "Authorization: Bearer wrong"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N35 — products spoof internal header without admin
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "X-Gateway-Secret: spoof"
+Expected: 401; admin authentication still required.
+Cleanup: None; continue in order.
+
+N36 — products client internal header replaced
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products" -H "X-Gateway-Secret: spoof"
+Expected: 200; normal list. Incorrect client header did not reach the service.
+Cleanup: None; continue in order.
+
+N37 — stock missing-product
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-missing-product.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N38 — stock missing-quantity
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-missing-quantity.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N39 — stock zero-product
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-zero-product.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N40 — stock negative-product
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-negative-product.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N41 — stock fraction-product
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-fraction-product.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N42 — stock string-product
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-string-product.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N43 — stock negative-quantity
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-negative-quantity.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N44 — stock fraction-quantity
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-fraction-quantity.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N45 — stock string-quantity
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-string-quantity.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N46 — stock null-quantity
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-null-quantity.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N47 — stock unsafe-product
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-unsafe-product.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N48 — stock unsafe-quantity
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock-unsafe-quantity.json"
+Expected: 400; JSON error; no record created.
+Cleanup: None; continue in order.
+
+N49 — PUT requires both fields: stock
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/stock/1" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/empty-object.json"
+Expected: 400; JSON error; record unchanged.
+Cleanup: None; continue in order.
+
+N50 — stock malformed body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/malformed.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N51 — stock array body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/array.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N52 — stock null body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/null.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N53 — stock empty body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/empty.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N54 — stock unsupported media type
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: text/plain" --data-binary "@tests/payloads/product.json"
+Expected: 415; JSON error.
+Cleanup: None; continue in order.
+
+N55 — stock missing media type
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type:" --data-binary "@tests/payloads/empty-object.json"
+Expected: 415; JSON error.
+Cleanup: None; continue in order.
+
+N56 — stock invalid ID 0
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/0"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N57 — stock invalid ID -1
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/-1"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N58 — stock invalid ID abc
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/abc"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N59 — stock invalid ID 1.5
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/1.5"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N60 — stock invalid ID 9007199254740992
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/9007199254740992"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N61 — stock nonexistent ID GET
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/999"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+N62 — stock nonexistent ID PUT
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/stock/999" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock.json"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+N63 — stock nonexistent ID DELETE
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/stock/999" -H "Authorization: Bearer $admin"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+N64 — stock unsupported method
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/stock" -H "Authorization: Bearer $admin"
+Expected: 405; JSON error and Allow header.
+Cleanup: None; continue in order.
+
+N65 — stock unsupported method
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock/1" -H "Authorization: Bearer $admin"
+Expected: 405; JSON error and Allow header.
+Cleanup: None; continue in order.
+
+N66 — stock unsupported method
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PATCH "$base/stock/1" -H "Authorization: Bearer $admin"
+Expected: 405; JSON error and Allow header.
+Cleanup: None; continue in order.
+
+N67 — stock POST absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N68 — stock POST absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer wrong"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N69 — stock PUT absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/stock/1"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N70 — stock PUT absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/stock/1" -H "Authorization: Bearer wrong"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N71 — stock DELETE absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/stock/1"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N72 — stock DELETE absent/wrong admin key
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/stock/1" -H "Authorization: Bearer wrong"
+Expected: 401; JSON error; unchanged data.
+Cleanup: None; continue in order.
+
+N73 — stock spoof internal header without admin
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "X-Gateway-Secret: spoof"
+Expected: 401; admin authentication still required.
+Cleanup: None; continue in order.
+
+N74 — stock client internal header replaced
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock" -H "X-Gateway-Secret: spoof"
+Expected: 200; normal list. Incorrect client header did not reach the service.
+Cleanup: None; continue in order.
+
+N75 — Direct products access
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i "http://127.0.0.1:3001/products" 
+Expected: 401; Gateway authentication required. Admin credential alone is also insufficient.
+Cleanup: None; continue in order.
+
+N76 — Direct products access
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i "http://127.0.0.1:3001/products" -H "X-Gateway-Secret: spoof"
+Expected: 401; Gateway authentication required. Admin credential alone is also insufficient.
+Cleanup: None; continue in order.
+
+N77 — Direct stock access
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i "http://127.0.0.1:3002/stock" 
+Expected: 401; Gateway authentication required. Admin credential alone is also insufficient.
+Cleanup: None; continue in order.
+
+N78 — Direct stock access
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i "http://127.0.0.1:3002/stock" -H "X-Gateway-Secret: spoof"
+Expected: 401; Gateway authentication required. Admin credential alone is also insufficient.
+Cleanup: None; continue in order.
+
+N79 — Unknown/misspelled route /unknown
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/unknown"
+Expected: 404; JSON error.
+Cleanup: None; continue in order.
+
+N80 — Unknown/misspelled route /produts
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/produts"
+Expected: 404; JSON error.
+Cleanup: None; continue in order.
+
+N81 — Unknown/misspelled route /stocks
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stocks"
+Expected: 404; JSON error.
+Cleanup: None; continue in order.
+
+N82 — Unknown/misspelled route /products/1/extra
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/1/extra"
+Expected: 404; JSON error.
+Cleanup: None; continue in order.
+
+N83 — Unknown/misspelled route /.env
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/.env"
+Expected: 404; JSON error.
+Cleanup: None; continue in order.
+
+N84 — Non-finite parsed price
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/nonfinite-price.json"
+Expected: 400; JSON error.
+Cleanup: None; continue in order.
+
+N85 — Duplicate stock creation
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock.json"
+Expected: 409; duplicate productId, no new record.
+Cleanup: None; continue in order.
+
+N86 — Stopped product service
+Preconditions: Stop ONLY the products terminal with Ctrl+C.
+Command:
+curl.exe -sS -i -X GET "$base/products"
+Expected: 502; Service unavailable; gateway remains running.
+Cleanup: Restart npm run products in the SAME terminal, preserving DATA_DIR; GET /products must return 200.
+
+N87 — Stopped stock service
+Preconditions: Products restored. Stop ONLY stock with Ctrl+C.
+Command:
+curl.exe -sS -i -X GET "$base/stock"
+Expected: 502; Service unavailable; gateway remains running.
+Cleanup: Restart npm run stock in the SAME terminal; GET /stock must return 200.
+
+N88 — Controlled downstream timeout
+Preconditions: Stop products with Ctrl+C. In its terminal run: node tests/slow-service.js. Wait for listening message. Leave gateway running.
+Command:
+curl.exe -sS -i -X GET "$base/products"
+Expected: 504 after about 2 seconds (default GATEWAY_TIMEOUT_MS=2000). Gateway stays alive.
+Cleanup: Ctrl+C the slow fixture; restart npm run products. GET /products must return 200.
+
+EDGE TESTS
+
+E01 — products boundary zero already stored
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/1"
+Expected: 200; price or quantity is exactly 0 (from P updates).
+Cleanup: None; continue in order.
+
+E02 — stock boundary zero already stored
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/stock/1"
+Expected: 200; price or quantity is exactly 0 (from P updates).
+Cleanup: None; continue in order.
+
+E03 — Unverified product reference accepted
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/orphan-stock.json"
+Expected: 201; stock id 2, productId 777. This chosen policy permits dangling references.
+Cleanup: None; continue in order.
+
+E04 — Conflicting stock update
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X PUT "$base/stock/2" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock.json"
+Expected: 409; cannot change productId to 1 because stock 1 already uses it.
+Cleanup: None; continue in order.
+
+E05 — Product deletion with stock
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/products/1" -H "Authorization: Bearer $admin"
+curl.exe -sS -i -X GET "$base/stock/1"
+Expected: 200 deleted product; 200 stock still exists. Manual cleanup is required.
+Cleanup: None; continue in order.
+
+E06 — Read deleted product
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X GET "$base/products/1"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+E07 — Delete stock records
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/stock/1" -H "Authorization: Bearer $admin"
+curl.exe -sS -i -X DELETE "$base/stock/2" -H "Authorization: Bearer $admin"
+curl.exe -sS -i -X GET "$base/stock"
+Expected: 200 for each delete; final GET 200 with [].
+Cleanup: None; continue in order.
+
+E08 — Repeat stock deletion
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/stock/1" -H "Authorization: Bearer $admin"
+Expected: 404; Record not found.
+Cleanup: None; continue in order.
+
+E09 — Exactly 8192-byte body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/exact-limit.json"
+Expected: 201; id 1 (max existing ID + 1; empty dataset starts again at 1). Extra padding field is ignored.
+Cleanup: None; continue in order.
+
+E10 — products 8193-byte body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/oversized.json"
+Expected: 413; body exceeds 8192 bytes; unchanged storage.
+Cleanup: None; continue in order.
+
+E11 — stock 8193-byte body
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/oversized.json"
+Expected: 413; body exceeds 8192 bytes; unchanged storage.
+Cleanup: None; continue in order.
+
+E12 — products corrupted storage
+Preconditions: Only disposable manual dataset selected. No concurrent test commands.
+Command:
+Copy-Item .scratch/manual/products.json .scratch/manual/products.json.backup
+[System.IO.File]::WriteAllText((Join-Path $PWD ".scratch/manual/products.json"), "{broken")
+curl.exe -sS -i -X GET "$base/products"
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/product.json"
+Get-Content .scratch/manual/products.json
+Expected: Both requests 500; file still contains {broken. Never automatically reset to [].
+Cleanup: Move-Item -Force .scratch/manual/products.json.backup .scratch/manual/products.json; GET /products must return 200.
+
+E13 — products missing storage
+Preconditions: Servers running; earlier tests completed.
+Command:
+Move-Item .scratch/manual/products.json .scratch/manual/products.json.backup
+curl.exe -sS -i -X GET "$base/products"
+Expected: 500; storage unavailable.
+Cleanup: Move-Item .scratch/manual/products.json.backup .scratch/manual/products.json; GET /products must return 200.
+
+E14 — products deterministic failed write
+Preconditions: Servers running; earlier tests completed.
+Command:
+New-Item -ItemType Directory .scratch/manual/products.json.tmp
+curl.exe -sS -i -X POST "$base/products" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/product.json"
+Expected: 500; original file unchanged. This simulates failure creating the temporary file.
+Cleanup: Remove-Item .scratch/manual/products.json.tmp; GET /products must return 200. Do not remove real .tmp files without inspecting them.
+
+E15 — stock corrupted storage
+Preconditions: Only disposable manual dataset selected. No concurrent test commands.
+Command:
+Copy-Item .scratch/manual/stock.json .scratch/manual/stock.json.backup
+[System.IO.File]::WriteAllText((Join-Path $PWD ".scratch/manual/stock.json"), "{broken")
+curl.exe -sS -i -X GET "$base/stock"
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock.json"
+Get-Content .scratch/manual/stock.json
+Expected: Both requests 500; file still contains {broken. Never automatically reset to [].
+Cleanup: Move-Item -Force .scratch/manual/stock.json.backup .scratch/manual/stock.json; GET /stock must return 200.
+
+E16 — stock missing storage
+Preconditions: Servers running; earlier tests completed.
+Command:
+Move-Item .scratch/manual/stock.json .scratch/manual/stock.json.backup
+curl.exe -sS -i -X GET "$base/stock"
+Expected: 500; storage unavailable.
+Cleanup: Move-Item .scratch/manual/stock.json.backup .scratch/manual/stock.json; GET /stock must return 200.
+
+E17 — stock deterministic failed write
+Preconditions: Servers running; earlier tests completed.
+Command:
+New-Item -ItemType Directory .scratch/manual/stock.json.tmp
+curl.exe -sS -i -X POST "$base/stock" -H "Authorization: Bearer $admin" -H "Content-Type: application/json" --data-binary "@tests/payloads/stock.json"
+Expected: 500; original file unchanged. This simulates failure creating the temporary file.
+Cleanup: Remove-Item .scratch/manual/stock.json.tmp; GET /stock must return 200. Do not remove real .tmp files without inspecting them.
+
+E18 — Final cleanup
+Preconditions: Servers running; earlier tests completed.
+Command:
+curl.exe -sS -i -X DELETE "$base/products/1" -H "Authorization: Bearer $admin"
+curl.exe -sS -i -X GET "$base/products"
+curl.exe -sS -i -X GET "$base/stock"
+Expected: 200 delete; both collections 200 [].
+Cleanup: Stop servers. Remove-Item Env:DATA_DIR in EACH server terminal before starting with sample data. In cURL terminal: Remove-Variable admin. Close terminals to clear remaining process credentials. Keep personal .env out of ZIPs.
+
+Evidence and execution notes
+----------------------------
+Record observed status/body beside each test ID; these are EXPECTATIONS until you
+run them. The accompanying observed-results.md records what was actually run in
+the cloud. This entire PowerShell sequence has not been run on Windows here.
+The Node integration suite additionally checks 12 overlapping writes and preserves
+all changes; JSON files still cannot safely support multiple service processes.
+Do not photograph commands containing expanded credentials. Use GET screenshots or
+redact keys and label redactions. For browser CRUD evidence, use the forms.

@@ -1,0 +1,15 @@
+sequenceDiagram
+  actor Client as cURL client
+  participant Gateway as Gateway :3000
+  participant Products as Product service :3001
+  participant File as products.json
+  Note over Client,File: GET /products/1 tested after creating Notebook (id 1)
+  Client->>Gateway: GET /products/1
+  Gateway->>Gateway: Validate route/method; no admin needed for GET
+  Gateway->>Products: GET /products/1 + internal gateway credential
+  Products->>Products: Check credential; match route; enter queue
+  Products->>File: Read and parse JSON array
+  File-->>Products: Valid product records
+  Products->>Products: Find id 1; leave queue
+  Products-->>Gateway: 200 application/json with Notebook record
+  Gateway-->>Client: Preserve 200 and JSON body

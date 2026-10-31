@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory practice</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header><p class="eyebrow">WEB & NETWORK SERVICES · PRACTICE</p>
+    <h1>Product inventory</h1>
+    <p>A small gateway, two services, and a place to learn.</p></header>
+  <main>
+    <section aria-labelledby="access-title">
+      <h2 id="access-title">Editing access</h2>
+      <p>Lists are public. Enter your local admin key to add, update or delete records. It stays in this field only; reload or clear it when finished.</p>
+      <label for="admin-key">Admin key</label>
+      <input id="admin-key" type="password" autocomplete="off" placeholder="Enter your private admin key">
+      <button id="clear-key" type="button">Clear key</button>
+      <button id="refresh" type="button">Refresh lists</button>
+    </section>
+    <p id="message" role="status" aria-live="polite">Loading inventory…</p>
+    <div class="columns">
+      <section aria-labelledby="products-title">
+        <h2 id="products-title">Products</h2>
+        <p>Update replaces both name and price. Prices have no currency assigned in this prototype.</p>
+        <form id="product-form">
+          <label for="product-id">ID (leave blank to add)</label><input id="product-id" type="number" min="1" step="1">
+          <label for="product-name">Name</label><input id="product-name" required>
+          <label for="product-price">Price</label><input id="product-price" type="number" min="0" step="any" required>
+          <button type="submit">Save product</button><button type="reset">Clear form</button>
+        </form>
+        <div class="table-scroll"><table><caption>Current products</caption><thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Actions</th></tr></thead><tbody id="products"></tbody></table></div>
+      </section>
+      <section aria-labelledby="stock-title">
+        <h2 id="stock-title">Stock</h2>
+        <p>One record per product ID. Product references are not checked. Deleting a product leaves stock for manual cleanup.</p>
+        <form id="stock-form">
+          <label for="stock-id">ID (leave blank to add)</label><input id="stock-id" type="number" min="1" step="1">
+          <label for="stock-product">Product ID</label><input id="stock-product" type="number" min="1" step="1" required>
+          <label for="stock-quantity">Quantity</label><input id="stock-quantity" type="number" min="0" step="1" required>
+          <button type="submit">Save stock</button><button type="reset">Clear form</button>
+        </form>
+        <div class="table-scroll"><table><caption>Current stock</caption><thead><tr><th>ID</th><th>Product ID</th><th>Quantity</th><th>Actions</th></tr></thead><tbody id="stock"></tbody></table></div>
+      </section>
+    </div>
+  </main>
+  <footer>Local classroom prototype · All browser requests use the gateway.</footer>
+</body>
+</html>

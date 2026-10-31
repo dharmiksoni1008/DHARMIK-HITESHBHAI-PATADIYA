@@ -1,0 +1,6 @@
+.env
+node_modules/
+.scratch/
+*.log
+*.zip
+__pycache__/

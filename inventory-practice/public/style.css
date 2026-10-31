@@ -1,0 +1,26 @@
+:root { font-family: system-ui, sans-serif; color: #193329; background: #f4f6f2; }
+body { margin: 0; }
+header, main, footer { max-width: 1100px; margin: auto; padding: 24px; }
+header { padding-top: 48px; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin: 12px 0; }
+h2 { margin-top: 0; }
+p { line-height: 1.6; }
+.eyebrow { font-size: .8rem; letter-spacing: .12em; }
+section { background: white; border: 1px solid #cbd6cc; border-radius: 12px; padding: 24px; }
+.columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+label { display: block; margin-top: 12px; font-weight: 600; }
+input { box-sizing: border-box; padding: 10px; border: 1px solid #84998b; border-radius: 5px; max-width: 100%; font: inherit; }
+form input { width: 100%; }
+button { border: 1px solid #225c43; background: #225c43; color: white; padding: 10px 14px; border-radius: 5px; margin: 12px 5px 5px 0; font: inherit; cursor: pointer; }
+button:hover { background: #17422f; }
+button:focus-visible, input:focus-visible { outline: 3px solid #d29b24; outline-offset: 3px; }
+button:disabled { opacity: .5; cursor: wait; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left; }
+caption { text-align: left; padding: 8px 0; font-weight: 600; }
+th, td { padding: 10px 6px; border-bottom: 1px solid #d9e1da; overflow-wrap: anywhere; }
+td button { font-size: .85rem; padding: 6px 9px; }
+#message { padding: 14px; background: #e2ece4; border-left: 4px solid #225c43; }
+#message[data-error="true"] { background: #fff0ed; border-color: #a12c21; color: #7c241c; }
+footer { font-size: .85rem; }
+@media (max-width: 760px) { .columns { grid-template-columns: 1fr; } header, main, footer { padding: 18px; } }

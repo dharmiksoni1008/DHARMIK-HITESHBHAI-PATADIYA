@@ -1,0 +1,9 @@
+flowchart LR
+  Reader["Reader"] --> Lists(["View product and stock lists"])
+  Reader --> Item(["Read a record by ID through gateway"])
+  Admin["User with admin key"] --> Create(["Add records"])
+  Admin --> Update(["Replace record fields"])
+  Admin --> Delete(["Delete records"])
+  Admin --> Lists
+  Admin --> Key(["Enter or clear browser key"])
+  Note["Optional use-case overview; does not replace architecture/sequence diagrams."]

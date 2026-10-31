@@ -1,0 +1,10 @@
+flowchart LR
+  Browser["Browser: plain HTML/CSS/JS"] -->|"relative HTTP URLs; admin Bearer key for edits"| Gateway["API gateway :3000"]
+  Curl["cURL client"] -->|"ordinary requests; admin key for edits"| Gateway
+  Gateway -->|"X-Gateway-Secret; method, path and body"| Products["Product service :3001"]
+  Gateway -->|"X-Gateway-Secret; method, path and body"| Stock["Stock service :3002"]
+  Products -->|"serialized file operations"| ProductFile[("data/products.json")]
+  Stock -->|"serialized file operations"| StockFile[("data/stock.json")]
+  Products -.->|"status and JSON body"| Gateway
+  Stock -.->|"status and JSON body"| Gateway
+  Note["All servers bind loopback. Services enforce application credentials. No product lookup from stock; product deletion leaves stock."]

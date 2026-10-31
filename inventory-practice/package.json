@@ -1,0 +1,16 @@
+{
+  "name": "inventory-practice",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Beginner HTTP gateway and JSON-file inventory practice",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "gateway": "node --env-file-if-exists=.env services/gateway.js",
+    "products": "node --env-file-if-exists=.env services/products.js",
+    "stock": "node --env-file-if-exists=.env services/stock.js",
+    "test": "node --test --test-concurrency=1 tests/integration.test.js",
+    "dev": "node --env-file-if-exists=.env scripts/start-local.js"
+  }
+}
